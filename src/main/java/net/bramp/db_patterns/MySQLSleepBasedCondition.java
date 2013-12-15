@@ -27,46 +27,46 @@ public class MySQLSleepBasedCondition implements Condition {
 
 	final static Logger LOG = LoggerFactory.getLogger(MySQLSleepBasedCondition.class);
 
-	final static long DEFAULT_WAIT = 60000000000L;
+	static long DEFAULT_WAIT = 60000000000L;
 
 	final static String sleepQuery = "SELECT SLEEP(?), ?;";
 	final static String wakeQuery = "KILL QUERY ?;";
 
-	final static String listQuery_new =  // MySQL 5.1.7 or newer
+	final static String listQueryNew =  // MySQL 5.1.7 or newer
 		"SELECT Id, User, Host, Db, Command, Time, State, Info FROM " +
 		"INFORMATION_SCHEMA.PROCESSLIST " +
-		"WHERE STATE = 'User sleep' AND INFO LIKE ?" +
+		"WHERE STATE = 'User sleep' AND INFO LIKE ? " +
 		"ORDER BY TIME";
 
-	final static String listQuery_old = "SHOW PROCESSLIST;";
+	final static String listQueryOld = "SHOW PROCESSLIST;";
 
+	final boolean useListQueryNew = false;
+	
 	final DataSource ds;
 	final String lockName;
 
-	final static ResultSetFilter.Predicate isOurLockPredicate = new ResultSetFilter.Predicate() {
+	final ResultSetFilter.Predicate isOurLockPredicate = new ResultSetFilter.Predicate() {
 
 		public boolean apply(ResultSet rs) throws SQLException {
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("ResultSet {}", ResultSets.toString(rs));
 			}
 
-			String state = rs.getString("State");
-			if (!state.equals("User sleep"))
+			String state = rs.getString(7);
+			if (state != null && !state.equals("User sleep"))
 				return false;
 
-			String info = rs.getString("Info");
-			// TODO check info looks like:
-			//SELECT SLEEP(?), '?'
-			return true;
+			String info = rs.getString(8);
+			return info != null && info.matches("SELECT SLEEP\\([\\d.]+\\), '" + lockName + "'");
 		}
 	};
-	
+
 	public MySQLSleepBasedCondition(DataSource ds, String lockName) {
 		this.ds = ds;
 		this.lockName = lockName;
 		
-		// TODO Detect MySQL version
-		
+		// TODO Detect MySQL version (update useListQueryNew)
+		// TODO Detect if we can sleep/kill
 	}
 
 	/**
@@ -107,7 +107,10 @@ public class MySQLSleepBasedCondition implements Condition {
 
 	public void await() throws InterruptedException {
 		while (!awaitNanosInternal(DEFAULT_WAIT)) {
-			// Keep looping, until we expire before our timeout
+			// Keep looping, until we expire before our timeout or are interuptted
+			if (Thread.interrupted())
+				throw new InterruptedException();
+
 			// TODO There is a race condition here. Between iterations we might miss a wakeup
 		}
 	}
@@ -134,8 +137,13 @@ public class MySQLSleepBasedCondition implements Condition {
 	 * @throws SQLException 
 	 */
 	protected ResultSet findLockThreads(Connection c) throws SQLException {
-		PreparedStatement s = c.prepareStatement(listQuery_new);
-		s.setString(1, "%" + lockName + "%");
+		PreparedStatement s;
+		if (useListQueryNew) {
+			s = c.prepareStatement(listQueryNew);
+			s.setString(1, "SELECT SLEEP(%" + lockName + "%");
+		} else {
+			s = c.prepareStatement(listQueryOld);
+		}
 		return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
 	}
 
@@ -160,7 +168,7 @@ public class MySQLSleepBasedCondition implements Condition {
 					LOG.debug("Nothing to wake up, lets bail");
 					return;
 				}
-				long toWake = threads.getLong("Id");
+				long toWake = threads.getLong(1);
 				threads.close();
 
 				killThread(c, toWake);
@@ -182,7 +190,7 @@ public class MySQLSleepBasedCondition implements Condition {
 				List<Long> toWake = new ArrayList<Long>();
 				ResultSet threads = findLockThreads(c);
 				while(threads.next()) {
-					toWake.add( threads.getLong("Id") );
+					toWake.add( threads.getLong(1) );
 				}
 				threads.close();
 
