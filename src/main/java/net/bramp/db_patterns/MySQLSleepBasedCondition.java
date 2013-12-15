@@ -12,6 +12,7 @@ import java.util.concurrent.locks.Condition;
 
 import javax.sql.DataSource;
 
+import net.bramp.sql.ResultSetFilter;
 import net.bramp.sql.ResultSets;
 
 import org.slf4j.Logger;
