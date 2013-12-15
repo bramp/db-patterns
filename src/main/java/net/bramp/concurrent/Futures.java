@@ -74,6 +74,9 @@ public final class Futures {
 					results[i] = future.get(timeoutNS / (2 * size), TimeUnit.NANOSECONDS);
 					done.set(i);
 
+				} catch (ExecutionException e) {
+					unwrapExecutionException(e);
+
 				} catch (TimeoutException e) {
 					// If we have exceeded our deadline, throw, otherwise
 					if (System.nanoTime() >= deadline)
@@ -83,5 +86,19 @@ public final class Futures {
 		}
 
 		return Collections.unmodifiableList(Arrays.asList(results));
+	}
+
+	/**
+	 * Sometimes InterruptedException is wrapped in an ExecutionException
+	 * I don't think that's correct behavior, but lets fix it here
+	 * @param e
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public static void unwrapExecutionException(ExecutionException e) throws InterruptedException, ExecutionException {
+		if (e.getCause() instanceof InterruptedException)
+			throw (InterruptedException)e.getCause();
+
+		throw e;
 	}
 }
