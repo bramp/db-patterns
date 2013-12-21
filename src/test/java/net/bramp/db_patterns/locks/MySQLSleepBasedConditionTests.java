@@ -2,6 +2,7 @@ package net.bramp.db_patterns.locks;
 
 import static org.junit.Assert.*;
 
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -28,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO Test it doesn't interfere with other locks
+ * 
+ * Some of these tests assume spurious wake ups won't occur
+ * 
  * @author bramp
  *
  */
@@ -36,6 +39,8 @@ public class MySQLSleepBasedConditionTests {
 
 	final static Logger LOG = LoggerFactory.getLogger(MySQLSleepBasedConditionTests.class);
 
+	final static long WAIT_FOR_TIMING_TEST = 200; // in ms
+	
 	String lockName;
 
 	ExecutorService executor;
@@ -52,7 +57,7 @@ public class MySQLSleepBasedConditionTests {
 	public void setup() throws InterruptedException {
 
 		// Decrease the default wait time, for test purposes
-		MySQLSleepBasedCondition.DEFAULT_WAIT = TimeUnit.SECONDS.toNanos(10);
+		MySQLSleepBasedCondition.DEFAULT_WAIT = TimeUnit.SECONDS.toNanos(1);
 
 		// Different lock name for each test (to avoid test clashes)
 		lockName = java.util.UUID.randomUUID().toString();
@@ -72,7 +77,7 @@ public class MySQLSleepBasedConditionTests {
 		futures.add( executor.submit(awaitCallable) );
 		futures.add( executor.submit(awaitCallable) );
 		futures.add( executor.submit(awaitCallable) );
-		
+
 		Thread.sleep(100);
 	}
 
@@ -93,6 +98,9 @@ public class MySQLSleepBasedConditionTests {
 			this.condition = condition;
 		}
 
+		@edu.umd.cs.findbugs.annotations.SuppressWarnings(
+			    value="WA_AWAIT_NOT_IN_LOOP", 
+			    justification="Test code, that is testing await()")
 		public Void call() throws Exception {
 			assertTrue("Thread hasn't had a chance to await", shouldBeASleep.get());
 
@@ -182,7 +190,7 @@ public class MySQLSleepBasedConditionTests {
 	 * @throws ExecutionException
 	 * @throws TimeoutException
 	 */
-	@Test(timeout = 15000)
+	@Test(timeout = 5000)
 	public void testAwaitInterupt() throws InterruptedException, ExecutionException, TimeoutException {
 		// Now wake it up
 		LOG.info("Interupt");
@@ -203,4 +211,44 @@ public class MySQLSleepBasedConditionTests {
 
 		assertEquals("Expected no threads to wake", 0, numberAwake.get());
 	}
+	
+	/**
+	 * Test the timeout waits the right amount of time
+	 * @throws InterruptedException
+	 */
+	@Test(timeout=1000)
+	public void awaitTimeout() throws InterruptedException {
+
+		long wait = WAIT_FOR_TIMING_TEST;
+
+		long now = System.currentTimeMillis();
+		boolean ret = condition.await(wait, TimeUnit.MILLISECONDS);
+		long duration = System.currentTimeMillis() - now;
+
+		assertFalse("await timed out", ret);
+
+		assertTrue("We waited less than " + wait + "ms (actual:" + duration + ")", duration >= wait);
+		assertTrue("We waited more than " + (wait*1.2) + "ms (actual:" + duration + ")", duration < wait * 1.2);
+	}
+	
+	/**
+	 * Test the timeout waits the right amount of time
+	 * @throws InterruptedException
+	 */
+	@Test(timeout=1000)
+	public void awaitUntilTimeout() throws InterruptedException {
+
+		long wait = WAIT_FOR_TIMING_TEST;
+
+		long now = System.currentTimeMillis();
+		Date deadline = new Date(now + wait);
+
+		boolean ret = condition.awaitUntil(deadline);
+		long duration = System.currentTimeMillis() - now;
+
+		assertFalse("await timed out", ret);
+		assertTrue("We waited less than " + wait + "ms (actual:" + duration + ")", duration >= wait);
+		assertTrue("We waited more than " + (wait*1.2) + "ms (actual:" + duration + ")", duration < wait * 1.2);
+	}
+	
 }

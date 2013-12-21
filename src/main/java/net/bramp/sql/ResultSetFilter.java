@@ -22,6 +22,8 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 /**
  * Wraps an existing ResultSet, and filters out rows that don't match the predicate
  * 
@@ -41,10 +43,10 @@ public class ResultSetFilter implements ResultSet {
 		 * @return
 		 * @throws SQLException 
 		 */
-		public boolean apply(ResultSet rs) throws SQLException;
+		public boolean apply(@Nonnull ResultSet rs) throws SQLException;
 	}
 
-	public ResultSetFilter(ResultSet rs, Predicate predicate) {
+	public ResultSetFilter(@Nonnull ResultSet rs, @Nonnull Predicate predicate) {
 		this.rs = rs;
 		this.predicate = predicate;
 	}

@@ -10,6 +10,7 @@ public class DatabaseUtils {
 		ds.setUser("root");
 		ds.setPassword("sP6prUCe");
 		ds.setServerName("localhost");
+		ds.setDatabaseName("db_patterns");
 		return ds;
 	}
 }

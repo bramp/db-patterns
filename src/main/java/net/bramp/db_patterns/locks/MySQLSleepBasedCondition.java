@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 
+import javax.annotation.Nonnull;
 import javax.sql.DataSource;
 
 import net.bramp.sql.ResultSetFilter;
@@ -62,31 +63,41 @@ public class MySQLSleepBasedCondition implements Condition {
 		}
 	};
 
-	public MySQLSleepBasedCondition(DataSource ds, String lockName) {
+	public MySQLSleepBasedCondition(@Nonnull DataSource ds, @Nonnull String lockName) {
 		this.ds = ds;
 		this.lockName = lockName;
-		
+
 		// TODO Detect MySQL version (update useListQueryNew)
 		// TODO Detect if we can sleep/kill
 	}
 
 	/**
 	 * 
-	 * @param nanosTimeout
-	 * @return true if correctly awaked, false if timeout
+	 * @param nanosTimeout The number of nanoseconds to wait
+	 * @return true if awaken (correctly, or spuriously), false if timeout
 	 * @throws InterruptedException
 	 */
 	protected boolean awaitNanosInternal(long nanosTimeout) throws InterruptedException {
+		if (nanosTimeout <= 0)
+			return false;
+
+		long now = System.nanoTime();
+		
 		try {
 			Connection c = ds.getConnection();
 			try {
 				PreparedStatement s = c.prepareStatement(sleepQuery);
-				s.setFloat(1, nanosTimeout / 1000000000L);
+
+				// Adjust nanosTimeout (due to time it took to get a connection)
+				nanosTimeout -= (System.nanoTime() -  now);
+
+				// Convert to seconds, but round to whole number of milliseconds
+				s.setFloat(1, Math.round(nanosTimeout / 1000000.0) / 1000f);
 				s.setString(2, lockName);
 				s.execute();
 
 				ResultSet rs = s.getResultSet();
-				if (rs.next())
+				if (rs != null && rs.next())
 					return rs.getInt(1) == 1;
 
 				return true;
@@ -126,18 +137,19 @@ public class MySQLSleepBasedCondition implements Condition {
 	}
 
 	public boolean await(long time, TimeUnit unit) throws InterruptedException {
-		return awaitNanos(unit.toNanos(time)) > 0;
+		return awaitNanosInternal(unit.toNanos(time));
 	}
 
 	public boolean awaitUntil(Date deadline) throws InterruptedException {
-		throw new UnsupportedOperationException();
+		long duration = deadline.getTime() - System.currentTimeMillis();
+		return awaitNanosInternal(TimeUnit.MILLISECONDS.toNanos(duration));
 	}
-	
+
 	/**
 	 * Get a list of the other threads waiting
 	 * @throws SQLException 
 	 */
-	protected ResultSet findLockThreads(Connection c) throws SQLException {
+	protected ResultSet findLockThreads(@Nonnull Connection c) throws SQLException {
 		PreparedStatement s;
 		if (useListQueryNew) {
 			s = c.prepareStatement(listQueryNew);
@@ -148,7 +160,7 @@ public class MySQLSleepBasedCondition implements Condition {
 		return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
 	}
 
-	protected void killThread(Connection c, long threadId) throws SQLException {
+	protected void killThread(@Nonnull Connection c, long threadId) throws SQLException {
 		LOG.debug("Killing thread {}", threadId);
 
 		PreparedStatement s = c.prepareStatement(wakeQuery);
@@ -166,7 +178,7 @@ public class MySQLSleepBasedCondition implements Condition {
 				// Find a list of blocked threads to wake up
 				ResultSet threads = findLockThreads(c);
 				if (!threads.next()) {
-					LOG.debug("Nothing to wake up, lets bail");
+					LOG.debug("Nothing to wake up for '{}'", lockName);
 					return;
 				}
 				long toWake = threads.getLong(1);
