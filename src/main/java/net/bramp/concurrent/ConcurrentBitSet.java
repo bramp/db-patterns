@@ -161,7 +161,10 @@ public class ConcurrentBitSet {
 	}
 
 	public synchronized boolean equals(Object obj) {
-		return set.equals(obj);
+		if (obj instanceof ConcurrentBitSet)
+			return set.equals( ((ConcurrentBitSet)obj).set );
+
+		return false;
 	}
 
 	public synchronized String toString() {
