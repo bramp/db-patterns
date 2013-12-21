@@ -8,7 +8,20 @@
 	<packaging>jar</packaging>
 
 	<name>DB Patterns</name>
-	<url>http://maven.apache.org</url>
+	<description>Some simple DB patterns implemented onto of MySQL</description>
+	<url>https://github.com/bramp/db-patterns</url>
+
+	<licenses>
+		<license>
+			<name>The BSD 2-Clause License</name>
+			<url>http://opensource.org/licenses/BSD-2-Clause</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<scm>
+		<url>scm:git:git@github.com:bramp/db-patterns.git</url>
+	</scm>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -38,8 +51,8 @@
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>5.1.27</version>
+			<scope>provided</scope>
 		</dependency>
-
 
 		<dependency>
 			<groupId>junit</groupId>
