@@ -5,8 +5,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -211,6 +209,7 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 	 */
 	public E poll(long timeout, TimeUnit unit) throws InterruptedException {
 
+		final long deadlineMillis = System.currentTimeMillis() + unit.toMillis(timeout);
 		final Date deadline = new Date(deadlineMillis);
 
 		E head = null;
