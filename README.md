@@ -1,5 +1,6 @@
 MySQL DB Patterns
-by [Andrew Brampton](http://bramp.net) 2012-2013
+=================
+by [Andrew Brampton](http://bramp.net) 2013
 
 Intro
 -----
