@@ -39,7 +39,7 @@ import net.bramp.db_patterns.locks.MySQLSleepBasedCondition;
 public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 	final static Logger LOG = LoggerFactory.getLogger(MySQLBasedQueue.class);
-	
+
 	final static String addQuery  = "INSERT INTO queue (queue_name, inserted, inserted_by, value) values (?, now(), ?, ?)";
 	final static String peekQuery = "SELECT value FROM queue WHERE acquired IS NULL AND queue_name = ?  ORDER BY id ASC LIMIT 1";
 	final static String sizeQuery = "SELECT COUNT(*) FROM queue WHERE acquired IS NULL AND queue_name = ?";
@@ -60,7 +60,7 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 		"SELECT value FROM queue WHERE id = @update_id"
 	};
-	
+
 	final static String cleanupQuery =
 		"DELETE FROM queue " +
 		"WHERE acquired IS NOT NULL " +
@@ -68,10 +68,10 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 		"   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
 
 	final static String cleanupAllQuery =
-			"DELETE FROM queue " +
-			"WHERE acquired IS NOT NULL " +
-			"   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
-	
+        "DELETE FROM queue " +
+        "WHERE acquired IS NOT NULL " +
+        "   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
+
 	final String me;
 	
 	final DataSource ds;

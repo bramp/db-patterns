@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
  * @author bramp
  *
  */
-public abstract class AbstractBlockingQueue<E> implements BlockingQueue<E> {
+abstract class AbstractBlockingQueue<E> implements BlockingQueue<E> {
 
 	public boolean isEmpty() {
 		return size() == 0;
