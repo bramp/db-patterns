@@ -7,7 +7,7 @@ Intro
 
 Some useful java code backed by JDBC that implements some common patterns.
 
-So far, a a Condition object, and a Queue are implemented.
+So far a Condition object, and a Queue are implemented.
 
 ```maven
 	<dependency>
@@ -32,6 +32,8 @@ A distributed Java Condition
 ```
 
 The MySQLSleepBasedCondition is based on the MySQL ``SLEEP()`` and ``KILL QUERY``
+
+The thread that is woken up is guaranteed to be the one that has waited the longest.
 
 
 Queue
