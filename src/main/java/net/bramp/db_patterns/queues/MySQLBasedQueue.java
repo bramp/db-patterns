@@ -80,12 +80,19 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 	final Condition condition;
 
-	public MySQLBasedQueue(DataSource ds, String queueName, Class<E> type) {
+    /**
+     * Creates a new MySQL backed queue
+     * @param ds
+     * @param queueName
+     * @param type
+     * @param me The name of this node, for storing in the database table
+     */
+	public MySQLBasedQueue(DataSource ds, String queueName, Class<E> type, String me) {
 		this.ds = ds;
 		this.queueName = queueName;
 		this.type = type;
 		this.condition = new MySQLSleepBasedCondition(ds, "queue-" + queueName);
-		this.me = "Andrew";
+		this.me = me;
 	}
 
 	public boolean add(E value) {

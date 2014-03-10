@@ -28,7 +28,7 @@ public class MySQLBasedQueueTests {
 		queueName = java.util.UUID.randomUUID().toString();
 		ds = DatabaseUtils.createDataSource();
 
-		queue = new MySQLBasedQueue<String>(ds, queueName, String.class);
+		queue = new MySQLBasedQueue<String>(ds, queueName, String.class, "test");
 	}
 
 	@After

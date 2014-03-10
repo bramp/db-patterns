@@ -31,6 +31,7 @@ public class StressMySQLBasedQueueTests {
 
 	private String queueName;
 	private DataSource ds;
+    private String me;
 	private ExecutorService executor;
 	private MySQLBasedQueue<Integer> queue;
 
@@ -96,8 +97,9 @@ public class StressMySQLBasedQueueTests {
 		// Different queue name for each test (to avoid test clashes)
 		queueName = java.util.UUID.randomUUID().toString();
 		ds = DatabaseUtils.createDataSource();
+        me = DatabaseUtils.getHostname();
 
-		queue = new MySQLBasedQueue<Integer>(ds, queueName, Integer.class);
+		queue = new MySQLBasedQueue<Integer>(ds, queueName, Integer.class, me);
 
 		executor = Executors.newCachedThreadPool();
 	}

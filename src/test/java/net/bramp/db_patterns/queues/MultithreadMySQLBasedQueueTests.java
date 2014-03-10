@@ -28,6 +28,7 @@ public class MultithreadMySQLBasedQueueTests {
 
 	private String queueName;
 	private DataSource ds;
+    private String me;
 	private ExecutorService executor;
 	private MySQLBasedQueue<String> queue;
 
@@ -52,8 +53,9 @@ public class MultithreadMySQLBasedQueueTests {
 		// Different queue name for each test (to avoid test clashes)
 		queueName = java.util.UUID.randomUUID().toString();
 		ds = DatabaseUtils.createDataSource();
+        me = DatabaseUtils.getHostname();
 
-		queue = new MySQLBasedQueue<String>(ds, queueName, String.class);
+		queue = new MySQLBasedQueue<String>(ds, queueName, String.class, me);
 
 		executor = Executors.newCachedThreadPool();
 	}

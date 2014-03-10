@@ -2,7 +2,11 @@ package net.bramp.db_patterns;
 
 import javax.sql.DataSource;
 
+import com.google.common.base.Throwables;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class DatabaseUtils {
 	public static DataSource createDataSource() {
@@ -13,4 +17,12 @@ public class DatabaseUtils {
 		ds.setDatabaseName("db_patterns");
 		return ds;
 	}
+
+    public static String getHostname() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            throw Throwables.propagate(e);
+        }
+    }
 }
