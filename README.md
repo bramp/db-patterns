@@ -56,6 +56,18 @@ The MySQLBasedQueue uses the MySQLSleepBasedCondition to help form a blocking
 queue, that can work without polling the database for new work.
 
 
+Build and Release
+-----------------
+
+To build this project use `mvn`.
+
+To push a release to maven central use the standard maven release plugin, and Sonatype's OSS repo:
+
+```bash
+mvn release:prepare
+mvn release:perform
+```
+
 Useful Articles
 ---------------
 	https://blog.engineyard.com/2011/5-subtle-ways-youre-using-mysql-as-a-queue-and-why-itll-bite-you
