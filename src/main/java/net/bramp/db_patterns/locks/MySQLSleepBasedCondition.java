@@ -21,9 +21,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Uses the MySQL sleep() / kill to implement a distributed Condition
- * 
- * @author bramp
  *
+ * @author bramp
  */
 public class MySQLSleepBasedCondition implements Condition {
 
@@ -43,7 +42,7 @@ public class MySQLSleepBasedCondition implements Condition {
 	final static String listQueryOld = "SHOW PROCESSLIST;";
 
 	final boolean useListQueryNew = false;
-	
+
 	final DataSource ds;
 	final String lockName;
 
@@ -72,7 +71,6 @@ public class MySQLSleepBasedCondition implements Condition {
 	}
 
 	/**
-	 * 
 	 * @param nanosTimeout The number of nanoseconds to wait
 	 * @return true if awaken (correctly, or spuriously), false if timeout
 	 * @throws InterruptedException
@@ -82,25 +80,30 @@ public class MySQLSleepBasedCondition implements Condition {
 			return false;
 
 		long now = System.nanoTime();
-		
+
 		try {
 			Connection c = ds.getConnection();
 			try {
 				PreparedStatement s = c.prepareStatement(sleepQuery);
+				try {
 
-				// Adjust nanosTimeout (due to time it took to get a connection)
-				nanosTimeout -= (System.nanoTime() -  now);
+					// Adjust nanosTimeout (due to time it took to get a connection)
+					nanosTimeout -= (System.nanoTime() - now);
 
-				// Convert to seconds, but round to whole number of milliseconds
-				s.setFloat(1, Math.round(nanosTimeout / 1000000.0) / 1000f);
-				s.setString(2, lockName);
-				s.execute();
+					// Convert to seconds, but round to whole number of milliseconds
+					s.setFloat(1, Math.round(nanosTimeout / 1000000.0) / 1000f);
+					s.setString(2, lockName);
+					s.execute();
 
-				ResultSet rs = s.getResultSet();
-				if (rs != null && rs.next())
-					return rs.getInt(1) == 1;
+					ResultSet rs = s.getResultSet();
+					if (rs != null && rs.next())
+						return rs.getInt(1) == 1;
 
-				return true;
+					return true;
+
+				} finally {
+					s.close();
+				}
 
 			} finally {
 				c.close();
@@ -132,7 +135,8 @@ public class MySQLSleepBasedCondition implements Condition {
 			try {
 				await();
 				break;
-			} catch (InterruptedException e) {}
+			} catch (InterruptedException e) {
+			}
 		}
 	}
 
@@ -147,17 +151,24 @@ public class MySQLSleepBasedCondition implements Condition {
 
 	/**
 	 * Get a list of the other threads waiting
-	 * @throws SQLException 
+	 *
+	 * @throws SQLException
 	 */
 	protected ResultSet findLockThreads(@Nonnull Connection c) throws SQLException {
-		PreparedStatement s;
-		if (useListQueryNew) {
-			s = c.prepareStatement(listQueryNew);
-			s.setString(1, "SELECT SLEEP(%" + lockName + "%");
-		} else {
-			s = c.prepareStatement(listQueryOld);
+		PreparedStatement s = null;
+
+		try {
+			if (useListQueryNew) {
+				s = c.prepareStatement(listQueryNew);
+				s.setString(1, "SELECT SLEEP(%" + lockName + "%");
+			} else {
+				s = c.prepareStatement(listQueryOld);
+			}
+			return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
+		} finally {
+			if (s != null)
+				s.close();
 		}
-		return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
 	}
 
 	protected void killThread(@Nonnull Connection c, long threadId) throws SQLException {
@@ -167,7 +178,7 @@ public class MySQLSleepBasedCondition implements Condition {
 		s.setLong(1, threadId);
 		s.execute();
 	}
-	
+
 	/**
 	 * Will signal the thread that's been waiting the longest
 	 */
@@ -202,8 +213,8 @@ public class MySQLSleepBasedCondition implements Condition {
 				// Find a list of blocked threads to wake up
 				List<Long> toWake = new ArrayList<Long>();
 				ResultSet threads = findLockThreads(c);
-				while(threads.next()) {
-					toWake.add( threads.getLong(1) );
+				while (threads.next()) {
+					toWake.add(threads.getLong(1));
 				}
 				threads.close();
 

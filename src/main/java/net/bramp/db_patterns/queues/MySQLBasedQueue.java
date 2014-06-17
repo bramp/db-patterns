@@ -18,7 +18,7 @@ import net.bramp.db_patterns.locks.MySQLSleepBasedCondition;
 
 /**
  * A queue backed by MySQL
- * 
+ * <p/>
  * CREATE TABLE queue (
  *     id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
  *     queue_name  VARCHAR(255) NOT NULL,    -- Queue name
@@ -29,12 +29,11 @@ import net.bramp.db_patterns.locks.MySQLSleepBasedCondition;
  *     value       BLOB NOT NULL,           -- The actual data
  *     PRIMARY KEY (id)
  * ) ENGINE=INNODB DEFAULT CHARSET=UTF8;
- * 
+ * <p/>
  * TODO Create efficient drainTo
- * 
- * @author bramp
  *
  * @param <E>
+ * @author bramp
  */
 public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
@@ -48,45 +47,46 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 	 * Claims one row (and keeps it in the database)
 	 */
 	final static String pollQuery[] = {
-		"SET @update_id := -1; ",
+			"SET @update_id := -1; ",
 
-		"UPDATE queue SET " +
-		"   id = (SELECT @update_id := id), " +
-		"   acquired = NOW(), " +
-		"   acquired_by = ? " +
-		"WHERE acquired IS NULL AND queue_name = ? " +
-		"ORDER BY id ASC " +
-		"LIMIT 1; ",
+			"UPDATE queue SET " +
+					"   id = (SELECT @update_id := id), " +
+					"   acquired = NOW(), " +
+					"   acquired_by = ? " +
+					"WHERE acquired IS NULL AND queue_name = ? " +
+					"ORDER BY id ASC " +
+					"LIMIT 1; ",
 
-		"SELECT value FROM queue WHERE id = @update_id"
+			"SELECT value FROM queue WHERE id = @update_id"
 	};
 
 	final static String cleanupQuery =
-		"DELETE FROM queue " +
-		"WHERE acquired IS NOT NULL " +
-		"   AND queue_name = ? " +
-		"   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
+			"DELETE FROM queue " +
+					"WHERE acquired IS NOT NULL " +
+					"   AND queue_name = ? " +
+					"   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
 
 	final static String cleanupAllQuery =
-        "DELETE FROM queue " +
-        "WHERE acquired IS NOT NULL " +
-        "   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
+			"DELETE FROM queue " +
+					"WHERE acquired IS NOT NULL " +
+					"   AND acquired < DATE_SUB(NOW(), INTERVAL 10 DAY)";
 
 	final String me;
-	
+
 	final DataSource ds;
 	final String queueName;
 	final Class<E> type;
 
 	final Condition condition;
 
-    /**
-     * Creates a new MySQL backed queue
-     * @param ds
-     * @param queueName
-     * @param type
-     * @param me The name of this node, for storing in the database table
-     */
+	/**
+	 * Creates a new MySQL backed queue
+	 *
+	 * @param ds
+	 * @param queueName
+	 * @param type
+	 * @param me        The name of this node, for storing in the database table
+	 */
 	public MySQLBasedQueue(DataSource ds, String queueName, Class<E> type, String me) {
 		this.ds = ds;
 		this.queueName = queueName;
@@ -100,16 +100,20 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 			Connection c = ds.getConnection();
 			try {
 				PreparedStatement s = c.prepareStatement(addQuery);
-				s.setString(1, queueName);
-				s.setObject(2, me); // Inserted by me
-				s.setObject(3, value);
-				s.execute();
+				try {
+					s.setString(1, queueName);
+					s.setObject(2, me); // Inserted by me
+					s.setObject(3, value);
+					s.execute();
 
-				// Wake up one
-				condition.signal();
+					// Wake up one
+					condition.signal();
 
-				return true;
+					return true;
 
+				} finally {
+					s.close();
+				}
 			} finally {
 				c.close();
 			}
@@ -127,15 +131,19 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 			Connection c = ds.getConnection();
 			try {
 				PreparedStatement s = c.prepareStatement(peekQuery);
-				s.setString(1, queueName);
-				if (s.execute()) {
-					ResultSet rs = s.getResultSet();
-					if (rs != null && rs.next()) {
-						return rs.getObject(1, type);
+				try {
+					s.setString(1, queueName);
+					if (s.execute()) {
+						ResultSet rs = s.getResultSet();
+						if (rs != null && rs.next()) {
+							return rs.getObject(1, type);
+						}
 					}
-				}
 
-				return null;
+					return null;
+				} finally {
+					s.close();
+				}
 
 			} finally {
 				c.close();
@@ -209,7 +217,7 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	/**
 	 * Blocks until something is in the queue, up to timeout
 	 * null if timeout occurs
@@ -222,7 +230,7 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 		E head = null;
 		boolean stillWaiting = true;
 
-		while (stillWaiting) {	
+		while (stillWaiting) {
 			// Check if we can grab one
 			head = poll();
 			if (head != null)
@@ -237,7 +245,7 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 		return head;
 	}
-	
+
 	public void cleanup() throws SQLException {
 		Connection c = ds.getConnection();
 		try {
@@ -247,11 +255,12 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 		} finally {
 			c.close();
-		}		
+		}
 	}
 
 	/**
 	 * Cleans up all queues
+	 *
 	 * @throws SQLException
 	 */
 	public void cleanupAll() throws SQLException {
@@ -262,6 +271,6 @@ public class MySQLBasedQueue<E> extends AbstractBlockingQueue<E> {
 
 		} finally {
 			c.close();
-		}		
+		}
 	}
 }
