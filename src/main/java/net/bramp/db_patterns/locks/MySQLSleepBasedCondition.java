@@ -157,18 +157,13 @@ public class MySQLSleepBasedCondition implements Condition {
 	protected ResultSet findLockThreads(@Nonnull Connection c) throws SQLException {
 		PreparedStatement s = null;
 
-		try {
-			if (useListQueryNew) {
-				s = c.prepareStatement(listQueryNew);
-				s.setString(1, "SELECT SLEEP(%" + lockName + "%");
-			} else {
-				s = c.prepareStatement(listQueryOld);
-			}
-			return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
-		} finally {
-			if (s != null)
-				s.close();
+		if (useListQueryNew) {
+			s = c.prepareStatement(listQueryNew);
+			s.setString(1, "SELECT SLEEP(%" + lockName + "%");
+		} else {
+			s = c.prepareStatement(listQueryOld);
 		}
+		return new ResultSetFilter(s.executeQuery(), isOurLockPredicate);
 	}
 
 	protected void killThread(@Nonnull Connection c, long threadId) throws SQLException {
