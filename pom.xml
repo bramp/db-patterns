@@ -3,7 +3,7 @@
 
 	<groupId>net.bramp.db-patterns</groupId>
 	<artifactId>db-patterns</artifactId>
-	<version>0.1</version>
+	<version>0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>DB Patterns</name>
@@ -28,7 +28,7 @@
 	<scm>
 		<url>https://github.com/bramp/db-patterns</url>
 		<connection>scm:git:git@github.com:bramp/db-patterns.git</connection>
-	  <tag>db-patterns-0.1</tag>
+	  <tag>HEAD</tag>
   </scm>
 
 	<properties>
